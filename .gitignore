@@ -109,3 +109,6 @@ venv.bak/
 # secret
 fu_files/
 snmn_questions.py
+
+# idea
+.idea/

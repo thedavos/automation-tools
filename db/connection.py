@@ -1,5 +1,5 @@
 """ Mysql Module """
-import mysql.connector as db
+from mysql.connector import connect
 from .config import Config
 
 
@@ -12,8 +12,8 @@ class Database:
         self.database = config.database
 
     def get_connection(self):
-        connection = db.connect(host=self.host, user=self.user,
-                                passwd=self.password, database=self.database)
+        connection = connect(host=self.host, user=self.user,
+                             passwd=self.password, database=self.database)
 
         return connection
 
