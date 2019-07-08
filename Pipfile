@@ -7,6 +7,9 @@ verify_ssl = true
 autopep8 = "*"
 
 [packages]
+mysql-connector = "*"
+pillow = "*"
+python-dotenv = "*"
 
 [requires]
 python_version = "3.6"
