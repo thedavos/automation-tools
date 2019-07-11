@@ -1,24 +1,17 @@
 """ Question Model """
 import csv
-import os
-import re
 from db.connection import Database
 from Config import Config
 from utils.image_manager import *
-from utils.text_manager import backslash_apostrophe_to_text
+from utils.text_manager import handle_text
 from utils.os_manager import create_folder_if_not_exist
 from models.Answer import AnswerModel
 
 
 class QuestionModel(Database, AnswerModel):
-    TABLE_NAME = 'mdl_question'
+    QUESTION_TABLE_NAME = 'mdl_question'
     CHAPTER_FILE = os.path.join(Config.FU_FILES, 'extraordinary_chapter_file.csv')
-    CHAPTER_YEAR = '2017'
-    OUTPUT_DIRNAME = '/home/davos/FractalUp/questions/'
-    OUTPUT_IMAGE_DIRNAME = os.path.join(OUTPUT_DIRNAME, 'images/')
-    OUTPUT_SQL_DIRNAME = os.path.join(OUTPUT_DIRNAME, 'sql/')
-    regex_to_replace = r'\"\W.*'
-    regex_to_extract = r'data:image.+\"'
+    CHAPTER_YEAR = Config.YEAR
 
     def __init__(self, question_id, name, statement, feedback):
         Database.__init__(self)
@@ -26,7 +19,8 @@ class QuestionModel(Database, AnswerModel):
         self.name = name
         self.statement = statement
         self.feedback = feedback
-        AnswerModel.__init__(self, self.get_answers())
+        self.feedback_image = has_text_an_image(self.feedback)
+        AnswerModel.__init__(self, self.get_answers(), self.name)
 
     @staticmethod
     def get_questions(query):
@@ -45,7 +39,7 @@ class QuestionModel(Database, AnswerModel):
                 JOIN {} AS a
                 ON q.id = a.question
                 WHERE q.id={}
-            """.format(self.TABLE_NAME, AnswerModel.TABLE_NAME, self.id)
+            """.format(self.QUESTION_TABLE_NAME, AnswerModel.ANSWER_TABLE_NAME, self.id)
 
         result = self.get_all_data(query)
 
@@ -68,7 +62,7 @@ class QuestionModel(Database, AnswerModel):
                 'questiontext'
                 )
                 AND f.filesize > 0
-            """.format(self.TABLE_NAME, 'mdl_files', self.id)
+            """.format(self.QUESTION_TABLE_NAME, 'mdl_files', self.id)
 
         result = self.get_all_data(query)
 
@@ -86,17 +80,13 @@ class QuestionModel(Database, AnswerModel):
             rows = csv.reader(file, delimiter=',')
             for row in rows:
                 if row[4] == chapter and self.CHAPTER_YEAR in row[2]:
-                    print(int(row[1]))
                     return int(row[1])
 
     def get_statement(self):
-        html = remove_image_tag_from_html(self.statement)
-
-        html_with_apostrophe_backslashed = backslash_apostrophe_to_text(html)
-        return html_with_apostrophe_backslashed
+        return handle_text(self.statement)
 
     def get_statement_url(self):
-        image = self._is_statement_an_image()
+        image = has_text_an_image(self.statement)
 
         create_folder_if_not_exist(self.OUTPUT_IMAGE_DIRNAME)
         create_folder_if_not_exist(self.OUTPUT_SQL_DIRNAME)
@@ -126,6 +116,27 @@ class QuestionModel(Database, AnswerModel):
         else:
             return ''
 
+    def get_hint_images(self, number):
+        images = []
+
+        if self.feedback_image is not None:
+            matches = re.finditer(self.regex_to_extract, self.feedback)
+            for index, match in enumerate(matches, start=1):
+                data, extension = get_data_image(match.group(), self.regex_to_replace)
+                image_name = self.name + '-' + 'generalfeedback' + str(index) + '.' + extension
+                write_image(self.OUTPUT_IMAGE_DIRNAME, image_name, data)
+
+                images.append(image_name)
+
+            final_images = images + ([''] * (10 - len(images)))
+
+            return final_images[number - 1]
+        else:
+            return ''
+
+    def get_hint(self):
+        return handle_text(self.feedback)
+
     def question_to_dict(self):
         """ returns an ordered dict with question data """
         chapter_id = self.get_chapter()
@@ -149,26 +160,26 @@ class QuestionModel(Database, AnswerModel):
             'alternative_5': self.get_answer(5),
             'alternative_5_img': self.get_answer_image(5),
             'answer': self.get_correct_answer(),
-            # 'hint_1': '',
-            # 'hint_1_image': '',
-            # 'hint_2': '',
-            # 'hint_2_image': '',
-            # 'hint_3': '',
-            # 'hint_3_image': '',
-            # 'hint_4': '',
-            # 'hint_4_image': '',
-            # 'hint_5': '',
-            # 'hint_5_image': '',
-            # 'hint_6': '',
-            # 'hint_6_image': '',
-            # 'hint_7': '',
-            # 'hint_7_image': '',
-            # 'hint_8': '',
-            # 'hint_8_image': '',
-            # 'hint_9': '',
-            # 'hint_9_image': '',
-            # 'hint_10': '',
-            # 'hint_10_image': ''
+            'hint_1': self.get_hint(),
+            'hint_1_image': self.get_hint_images(1),
+            'hint_2': '',
+            'hint_2_image': self.get_hint_images(2),
+            'hint_3': '',
+            'hint_3_image': self.get_hint_images(3),
+            'hint_4': '',
+            'hint_4_image': self.get_hint_images(4),
+            'hint_5': '',
+            'hint_5_image': self.get_hint_images(5),
+            'hint_6': '',
+            'hint_6_image': self.get_hint_images(6),
+            'hint_7': '',
+            'hint_7_image': self.get_hint_images(7),
+            'hint_8': '',
+            'hint_8_image': self.get_hint_images(8),
+            'hint_9': '',
+            'hint_9_image': self.get_hint_images(9),
+            'hint_10': '',
+            'hint_10_image': self.get_hint_images(10)
         }
 
     def _extract_chapter_from_name(self):
@@ -179,8 +190,3 @@ class QuestionModel(Database, AnswerModel):
         chapter = question_found.group(0)[:-1]
 
         return chapter.upper()
-
-    def _is_statement_an_image(self):
-        regex_to_extract = r'data:image.+\"'
-
-        return re.search(regex_to_extract, self.statement)

@@ -6,6 +6,12 @@ from base64 import b64decode as decode
 from PIL import Image
 
 
+def has_text_an_image(text):
+    regex_to_extract = r'data:image.+\"'
+
+    return re.search(regex_to_extract, text)
+
+
 def remove_image_tag_from_html(html):
     pattern = r'<img.+?>'
     html_without_image = re.sub(pattern, '', html)
