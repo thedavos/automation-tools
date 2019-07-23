@@ -34,5 +34,4 @@ def convert_to_empty_string(val):
     elif type(val) is int:
         return "{}".format(val)
     else:
-        print(val)
         return "'" + val + "'"

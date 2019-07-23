@@ -1,5 +1,5 @@
 """ Answer Model """
-from utils.text_manager import handle_text
+from utils.text_manager import handle_text, sanitize_text
 from utils.image_manager import has_text_an_image, get_data_image, write_image
 from Config import Config
 
@@ -19,7 +19,9 @@ class AnswerModel(Config):
         """
         number -= 1
         answer_html = self.answers[number][1]
-        return handle_text(answer_html)
+
+        text = handle_text(answer_html)
+        return sanitize_text(self.regex_to_sanitize_text, text)
 
     def get_answer_image(self, number):
         """

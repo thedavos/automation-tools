@@ -1,5 +1,11 @@
 """ Text Module: do actions to texts """
+import re
 from utils.image_manager import remove_image_tag_from_html
+
+
+def sanitize_text(regex, text):
+    sanitized_text = re.sub(regex, '', text)
+    return remove_duplicate_whitespaces(sanitized_text)
 
 
 def backslash_apostrophe_to_letter(letter):

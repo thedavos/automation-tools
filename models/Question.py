@@ -3,14 +3,14 @@ import csv
 from db.connection import Database
 from Config import Config
 from utils.image_manager import *
-from utils.text_manager import handle_text
-from utils.os_manager import create_folder_if_not_exist
+from utils.text_manager import handle_text, sanitize_text
+from utils.os_manager import remove_file
 from models.Answer import AnswerModel
 
 
 class QuestionModel(Database, AnswerModel):
     QUESTION_TABLE_NAME = 'mdl_question'
-    CHAPTER_FILE = os.path.join(Config.FU_FILES, 'extraordinary_chapter_file.csv')
+    CHAPTER_FILE = os.path.join(Config.FU_FILES, Config.CHAPTER_FILE)
     CHAPTER_YEAR = Config.YEAR
 
     def __init__(self, question_id, name, statement, feedback):
@@ -75,7 +75,7 @@ class QuestionModel(Database, AnswerModel):
         returns a chapter
         """
         chapter = self._extract_chapter_from_name()
-
+        print(self.name, chapter)
         with open(self.CHAPTER_FILE) as file:
             rows = csv.reader(file, delimiter=',')
             for row in rows:
@@ -83,13 +83,11 @@ class QuestionModel(Database, AnswerModel):
                     return int(row[1])
 
     def get_statement(self):
-        return handle_text(self.statement)
+        text = handle_text(self.statement)
+        return sanitize_text(self.regex_to_sanitize_text, text)
 
     def get_statement_url(self):
         image = has_text_an_image(self.statement)
-
-        create_folder_if_not_exist(self.OUTPUT_IMAGE_DIRNAME)
-        create_folder_if_not_exist(self.OUTPUT_SQL_DIRNAME)
 
         images = []
         image_final_name = self.name + '-' + 'questiontext.png'
@@ -107,7 +105,7 @@ class QuestionModel(Database, AnswerModel):
                 join_images(self.OUTPUT_IMAGE_DIRNAME, image_final_name, images)
 
                 for filename in images:
-                    remove_image(filename)
+                    remove_file(filename)
 
                 return image_final_name
 
@@ -135,7 +133,8 @@ class QuestionModel(Database, AnswerModel):
             return ''
 
     def get_hint(self):
-        return handle_text(self.feedback)
+        text = handle_text(self.feedback)
+        return sanitize_text(self.regex_to_sanitize_text, text)
 
     def question_to_dict(self):
         """ returns an ordered dict with question data """
